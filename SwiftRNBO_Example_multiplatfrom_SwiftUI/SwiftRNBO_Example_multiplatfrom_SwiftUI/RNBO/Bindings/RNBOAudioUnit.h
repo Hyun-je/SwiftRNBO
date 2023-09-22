@@ -36,4 +36,7 @@ extern void processBuffer(float *p, int len);
 - (NSString *)getParameterUnit:(size_t)number;
 - (NSString *)getParameterDisplayName:(size_t)number;
 
+- (void)sendMessage:(NSString*)name value:(float)v;
+- (void)sendMessage:(NSString*)name list:(NSArray<NSNumber*>*)l;
+
 @end

@@ -290,6 +290,24 @@ double sampleRateHz = 44100.0;
     }
 }
 
+- (void)sendMessage:(NSString*)name value:(float)v;
+{
+    @synchronized(self) {
+        self->_object->sendMessage(RNBO::TAG(name.UTF8String), v, RNBO::TAG(""));
+    }
+}
+
+- (void)sendMessage:(NSString*)name list:(NSArray<NSNumber*>*)l;
+{
+    @synchronized(self) {
+        auto mylist = RNBO::make_unique<RNBO::list>();
+        for(int i=0; i<l.count; i++) {
+            mylist->push(l[i].floatValue);
+        }
+        self->_object->sendMessage(RNBO::TAG(name.UTF8String), std::move(mylist), RNBO::TAG(""));
+    }
+}
+
 #pragma mark -
 #pragma mark file loader
 
