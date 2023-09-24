@@ -9,6 +9,9 @@
 #import <AVFoundation/AVFoundation.h>
 #import <Foundation/Foundation.h>
 
+#include "RNBODelegate.hpp"
+#include "RNBOEventHandler.hpp"
+
 extern long int toneCount;
 extern double sampleRateHz;
 extern float testFrequency;
@@ -21,6 +24,8 @@ extern void processBuffer(float *p, int len);
 //    AUAudioUnitBusArray *outputBusArray;
 //    AUAudioUnitBusArray *inputBusArray;
 }
+
+@property(nonatomic, weak) id <RNBODelegate> delegate;
 
 - (void)setParameterValue:(size_t)number value:(float)v;
 - (void)setParameterValueNormalized:(size_t)number valueNormalized:(float)v;

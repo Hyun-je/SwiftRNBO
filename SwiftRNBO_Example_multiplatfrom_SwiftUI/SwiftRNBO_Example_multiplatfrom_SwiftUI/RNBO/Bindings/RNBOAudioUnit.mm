@@ -21,6 +21,9 @@ float testFrequency = 880.0; // an audio frequency in Hz
 float testVolume = 0.5; // volume setting
 double sampleRateHz = 44100.0;
 
+MessageHandler* messageHandler;
+RNBO::ParameterEventInterfaceUniquePtr paramInterface;
+
 @interface RNBOAudioUnit ()
 @property AUAudioUnitBusArray *outputBusArray;
 @property AUAudioUnitBusArray *inputBusArray;
@@ -67,7 +70,15 @@ double sampleRateHz = 44100.0;
     // our
     _object.reset(new RNBO::CoreObject());
     _object->prepareToProcess(44100, 64);
-
+    
+    // setup event handler
+    messageHandler = new MessageHandler(_object);
+    messageHandler->unit = self;
+    messageHandler->parameterEventHandlerSelector = @selector(parameterEventHandler:);
+    messageHandler->messageEventHandlerSelector = @selector(messageEventHandler:);
+    paramInterface = _object->createParameterInterface(RNBO::ParameterEventInterface::MultiProducer, (RNBO::EventHandler *)messageHandler);
+    
+//
     //
     [self loadFileDependencies];
 
@@ -308,6 +319,50 @@ double sampleRateHz = 44100.0;
     }
 }
 
+- (void)parameterEventHandler:(const RNBO::ParameterEvent&)event
+{
+    if(_delegate) {
+        
+        size_t index = event.getIndex();
+        double value = event.getValue();
+        double time = event.getTime();
+        
+        [self.delegate didReceiveParameter:index :value];
+
+    }
+}
+
+- (void)messageEventHandler:(const RNBO::MessageEvent&)event
+{
+    if(_delegate) {
+        
+        RNBO::MessageEvent::Type type = event.getType();
+        const char* tag = messageHandler->tagResolver(event.getTag());
+        NSString* tagStr = [NSString stringWithUTF8String: tag];
+        
+        if(type == RNBO::MessageEvent::Number) {
+            NSNumber *arr[1];
+            arr[0] = [NSNumber numberWithDouble:event.getNumValue()];
+            NSArray *values = [NSArray arrayWithObjects:arr count:1];
+            [self.delegate didReceiveMessage:tagStr:type:values];
+        }
+        else if(type == RNBO::MessageEvent::List) {
+            NSMutableArray *values = [[NSMutableArray alloc]init];
+            auto list = event.getListValue().get();
+            for (int i = 0; i < list->length; i++) {
+                [values addObject:[NSNumber numberWithDouble:list->operator[](i)]];
+            }
+            [self.delegate didReceiveMessage:tagStr:type:values];
+        }
+        else {
+            NSArray *values = [[NSArray alloc]init];
+            [self.delegate didReceiveMessage:tagStr:type:values];
+        }
+        
+    }
+
+}
+
 #pragma mark -
 #pragma mark file loader
 
@@ -396,7 +451,7 @@ std::string _getStringFrom(CFURLRef cfUrl) {
             auto channels = audioFormat.mChannelsPerFrame;
             auto samplerate = audioFormat.mSampleRate;
             auto sampleFormat = audioFormat.mBitsPerChannel;
-            auto bigEndian = audioFormat.mFormatFlags | kAudioFormatFlagIsBigEndian;
+            auto bigEndian = audioFormat.mFormatFlags & kAudioFormatFlagIsBigEndian;
 
             if (dataSize > (1LL << 32)) {
                 std::cout << "WARNING: reading file larger than 4GB is not yet supported; reading first 4GB" << std::endl;
